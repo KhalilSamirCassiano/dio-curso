@@ -1,0 +1,68 @@
+import os
+from openai import OpenAI
+from gtts import gTTS
+
+# Se estiver usando o Google Colab, importe as bibliotecas de display de áudio:
+from IPython.display import Audio, display
+
+# 🔑 Configuração da API
+# Substitua 'sua-chave-aqui' pela sua API Key gerada na plataforma da OpenAI
+os.environ["OPENAI_API_KEY"] = "sua-chave-aqui"
+client = OpenAI()
+
+def assistente_de_voz(caminho_audio_entrada):
+    """
+    Pipeline completo: Áudio -> Whisper -> ChatGPT -> gTTS -> Áudio
+    """
+    
+    # ---------------------------------------------------------
+    # PASSO 1: Speech-to-Text com Whisper (Reconhecimento de Voz)
+    # ---------------------------------------------------------
+    print("🎙️ 1. Transcrevendo seu áudio com Whisper...")
+    with open(caminho_audio_entrada, "rb") as audio_file:
+        transcription = client.audio.transcriptions.create(
+            model="whisper-1",
+            file=audio_file
+        )
+    
+    texto_usuario = transcription.text
+    print(f"👤 Você perguntou: '{texto_usuario}'\n")
+
+    # ---------------------------------------------------------
+    # PASSO 2: Processamento com ChatGPT (Inteligência Artificial)
+    # ---------------------------------------------------------
+    print("🧠 2. Pensando na resposta com ChatGPT...")
+    response = client.chat.completions.create(
+        model="gpt-3.5-turbo", # Você pode mudar para gpt-4 se preferir
+        messages=[
+            {"role": "system", "content": "Você é um assistente prestativo, amigável e que responde de forma direta e concisa."},
+            {"role": "user", "content": texto_usuario}
+        ]
+    )
+    
+    texto_resposta = response.choices[0].message.content
+    print(f"🤖 Resposta do ChatGPT: '{texto_resposta}'\n")
+
+    # ---------------------------------------------------------
+    # PASSO 3: Text-to-Speech com gTTS (Síntese de Voz)
+    # ---------------------------------------------------------
+    print("🔊 3. Gerando o áudio da resposta com gTTS...")
+    arquivo_saida = "resposta_assistente.mp3"
+    
+    # lang='pt' garante que ele vai falar com sotaque em português do Brasil
+    tts = gTTS(text=texto_resposta, lang='pt', slow=False)
+    tts.save(arquivo_saida)
+
+    print("✅ Processo concluído com sucesso!")
+    
+    # Retorna o arquivo gerado. Se estiver no Colab, toca o áudio:
+    return display(Audio(arquivo_saida, autoplay=True))
+
+# ==========================================
+# 🚀 COMO EXECUTAR
+# ==========================================
+# 1. Grave um áudio curto (ex: "pergunta.m4a" ou "pergunta.wav") com alguma pergunta.
+# 2. Faça o upload desse arquivo para o seu ambiente / Colab.
+# 3. Descomente a linha abaixo substituindo pelo nome do seu arquivo e rode:
+
+# assistente_de_voz("meu_audio_de_pergunta.m4a")
